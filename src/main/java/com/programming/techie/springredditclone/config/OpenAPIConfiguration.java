@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenAPIConfiguration {
 
-
     @Bean
     public OpenAPI expenseAPI() {
         return new OpenAPI()
@@ -22,4 +21,5 @@ public class OpenAPIConfiguration {
                         .description("Expense Tracker Wiki Documentation")
                         .url("https://expensetracker.wiki/docs"));
     }
+
 }

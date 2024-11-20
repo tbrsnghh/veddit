@@ -44,35 +44,33 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-        return httpSecurity.cors().and()
-                .csrf().disable()
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/**")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/subreddit")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/posts/")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/posts/**")
-                        .permitAll()
-                        .requestMatchers("/v2/api-docs",
-                                "/configuration/ui",
-                                "/swagger-resources/**",
-                                "/configuration/security",
-                                "/swagger-ui.html",
-                                "/webjars/**")
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated())
-                .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
-                        .accessDeniedHandler(new BearerTokenAccessDeniedHandler())
-                ).build();
-    }
+@Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    return httpSecurity
+            .cors().and()
+            .csrf().disable()
+            .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers(
+                            "/api/auth/**", // Allow authentication APIs
+                            "/v3/api-docs/**", // Allow OpenAPI documentation
+                            "/swagger-ui/**", // Allow Swagger UI
+                            "/swagger-ui.html", // Allow Swagger UI HTML page
+                            "/webjars/**" // Allow webjars for Swagger assets
+                    ).permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/subreddit").permitAll() // Public GET access to specific APIs
+                    .requestMatchers(HttpMethod.GET, "/api/posts/").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                    .anyRequest().authenticated() // All other requests need authentication
+            )
+            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt) // Enable JWT resource server
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless session management
+            .exceptionHandling(exceptions -> exceptions
+                    .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint()) // Handle unauthorized access
+                    .accessDeniedHandler(new BearerTokenAccessDeniedHandler()) // Handle access denial
+            )
+            .build();
+}
+
 
     @Bean
     PasswordEncoder passwordEncoder() {
