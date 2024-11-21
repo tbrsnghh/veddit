@@ -57,8 +57,9 @@ public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws
                             "/swagger-ui.html", // Allow Swagger UI HTML page
                             "/webjars/**" // Allow webjars for Swagger assets
                     ).permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/subreddit").permitAll() // Public GET access to specific APIs
-                    .requestMatchers(HttpMethod.GET, "/api/posts/").permitAll()
+                    .requestMatchers( "/api/subreddit").permitAll()
+                    .requestMatchers( "/api/subreddit/**").permitAll()
+                    .requestMatchers( "/api/posts/").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                     .anyRequest().authenticated() // All other requests need authentication
             )
