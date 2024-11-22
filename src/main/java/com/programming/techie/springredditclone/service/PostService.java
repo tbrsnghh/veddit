@@ -1,23 +1,32 @@
 package com.programming.techie.springredditclone.service;
 
+import com.programming.techie.springredditclone.dto.ImageDTO;
 import com.programming.techie.springredditclone.dto.PostRequest;
 import com.programming.techie.springredditclone.dto.PostResponse;
 import com.programming.techie.springredditclone.exceptions.PostNotFoundException;
 import com.programming.techie.springredditclone.exceptions.SubredditNotFoundException;
 import com.programming.techie.springredditclone.mapper.PostMapper;
+import com.programming.techie.springredditclone.model.Image;
 import com.programming.techie.springredditclone.model.Post;
 import com.programming.techie.springredditclone.model.Subreddit;
 import com.programming.techie.springredditclone.model.User;
+import com.programming.techie.springredditclone.repository.ImageRepository;
 import com.programming.techie.springredditclone.repository.PostRepository;
 import com.programming.techie.springredditclone.repository.SubredditRepository;
 import com.programming.techie.springredditclone.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.Store;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
@@ -32,12 +41,25 @@ public class PostService {
     private final UserRepository userRepository;
     private final AuthService authService;
     private final PostMapper postMapper;
+    private final ImageRepository imageRepository;
+    private final FileService fileService;
 
-    public void save(PostRequest postRequest) {
-        Subreddit subreddit = subredditRepository.findByName(postRequest.getSubredditName())
-                .orElseThrow(() -> new SubredditNotFoundException(postRequest.getSubredditName()));
-        postRepository.save(postMapper.map(postRequest, subreddit, authService.getCurrentUser()));
+
+    public PostResponse save(PostRequest postRequest) {
+        // Lưu bài viết từ thông tin trong PostRequest
+        Post post = Post.builder()
+                .postName(postRequest.getPostName())
+                .description(postRequest.getDescription())
+                .createdDate(Instant.now())
+                .subreddit(subredditRepository.findByName(postRequest.getSubredditName()).get())
+                .user(authService.getCurrentUser())
+                .build();
+
+        // Lưu bài viết vào cơ sở dữ liệu
+        postRepository.save(post);
+        return postMapper.mapToDto(post);
     }
+
 
     @Transactional(readOnly = true)
     public PostResponse getPost(Long id) {
@@ -70,5 +92,40 @@ public class PostService {
                 .stream()
                 .map(postMapper::mapToDto)
                 .collect(toList());
+    }
+    public Page<PostResponse> getLatestPosts(Pageable pageable) {
+        return postRepository.findAllByOrderByCreatedDateDesc(pageable)
+                .map(postMapper::mapToDto);
+    }
+
+    public Image createPostImage(Long postId, ImageDTO build) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException(postId.toString()));
+        Image postImage = Image.builder()
+                .imageUrl(build.getImageUrl())
+                .post(post)
+                .build();
+        return imageRepository.save(postImage);
+    }
+
+    public Post getPostById(Long postId) {
+        return postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException(postId.toString()));
+    }
+
+    public List<ImageDTO> getPostImages(Long postId) {
+        // Ensure the post exists
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
+
+        // Query images associated with the post
+        List<Image> postImages = imageRepository.findByPost(post);
+
+        // Convert PostImage entities to DTOs
+        return postImages.stream()
+                .map(image -> ImageDTO.builder()
+                        .imageUrl(image.getImageUrl())
+                        .build())
+                .toList();
     }
 }
