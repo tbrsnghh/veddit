@@ -1,5 +1,7 @@
 package com.programming.techie.springredditclone.service;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,6 +40,28 @@ public class FileService {
             return filePath.toString();
         } catch (IOException e) {
             throw new RuntimeException("Không thể lưu file: " + e.getMessage());
+        }
+    }
+
+    public Resource loadFileAsResource(String filename) {
+        try {
+            Path filePath = Paths.get(uploadDir).resolve(filename);
+            Resource resource = new UrlResource(filePath.toUri());
+            if (resource.exists() && resource.isReadable()) {
+                return resource;
+            } else {
+                throw new RuntimeException("Could not read file: " + filename);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Could not load file: " + filename, e);
+        }
+    }
+
+    public String getContentType(Resource resource) {
+        try {
+            return Files.probeContentType(resource.getFile().toPath());
+        } catch (IOException e) {
+            throw new RuntimeException("Không thể khóa file: " + e.getMessage());
         }
     }
 }

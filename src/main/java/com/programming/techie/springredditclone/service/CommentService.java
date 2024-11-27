@@ -33,10 +33,18 @@ public class CommentService {
         Post post = postRepository.findById(commentsDto.getPostId())
                 .orElseThrow(() -> new PostNotFoundException(commentsDto.getPostId().toString()));
         Comment comment = commentMapper.map(commentsDto, post, authService.getCurrentUser());
+
+        if (commentsDto.getParentCommentId() != null) {
+            Comment parentComment = commentRepository.findById(commentsDto.getParentCommentId())
+                    .orElseThrow(() -> new RuntimeException("Parent comment not found"));
+            comment.setParentComment(parentComment);
+            parentComment.getSubComments().add(comment); // Thêm bình luận con vào danh sách bình luận con của bình luận cha
+        }
+
         commentRepository.save(comment);
 
-        String message = mailContentBuilder.build(post.getUser().getUsername() + " posted a comment on your post." + POST_URL);
-        sendCommentNotification(message, post.getUser());
+//        String message = mailContentBuilder.build(post.getUser().getUsername() + " posted a comment on your post." + POST_URL);
+//        sendCommentNotification(message, post.getUser());
     }
 
     private void sendCommentNotification(String message, User user) {
@@ -45,7 +53,7 @@ public class CommentService {
 
     public List<CommentsDto> getAllCommentsForPost(Long postId) {
         Post post = postRepository.findById(postId).orElseThrow(() -> new PostNotFoundException(postId.toString()));
-        return commentRepository.findByPost(post)
+        return commentRepository.findByPostOrderByCreatedDateDesc(post)
                 .stream()
                 .map(commentMapper::mapToDto).toList();
     }
@@ -53,7 +61,7 @@ public class CommentService {
     public List<CommentsDto> getAllCommentsForUser(String userName) {
         User user = userRepository.findByUsername(userName)
                 .orElseThrow(() -> new UsernameNotFoundException(userName));
-        return commentRepository.findAllByUser(user)
+        return commentRepository.findAllByUserOrderByCreatedDateDesc(user)
                 .stream()
                 .map(commentMapper::mapToDto)
                 .toList();
@@ -64,5 +72,19 @@ public class CommentService {
             throw new SpringRedditException("Comments contains unacceptable language");
         }
         return false;
+    }
+
+    public List<CommentsDto> getAllLv1CommentsForPost(Long postId) {
+        Post post = postRepository.findById(postId).orElseThrow(() -> new PostNotFoundException(postId.toString()));
+        return commentRepository.findByPostAndParentCommentIsNullOrderByCreatedDateDesc(post)
+                .stream()
+                .map(commentMapper::mapToDto).toList();
+    }
+
+    public List<CommentsDto> getAllSubCommentsForComment(Long commentId) {
+        Comment comment = commentRepository.findById(commentId).orElseThrow(() -> new PostNotFoundException(commentId.toString()));
+        return commentRepository.findByParentCommentOrderByCreatedDateDesc(comment)
+                .stream()
+                .map(commentMapper::mapToDto).toList();
     }
 }

@@ -44,7 +44,7 @@ public abstract class PostMapper {
     public abstract PostResponse mapToDto(Post post);
 
     Integer commentCount(Post post) {
-        return commentRepository.findByPost(post).size();
+        return commentRepository.findByPostOrderByCreatedDateDesc(post).size();
     }
 
     String getDuration(Post post) {

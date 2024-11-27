@@ -3,6 +3,7 @@ package com.programming.techie.springredditclone.controller;
 import com.programming.techie.springredditclone.dto.CommentsDto;
 import com.programming.techie.springredditclone.service.CommentService;
 import lombok.AllArgsConstructor;
+import lombok.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +34,16 @@ public class CommentsController {
     public ResponseEntity<List<CommentsDto>> getAllCommentsForUser(@RequestParam String userName){
         return ResponseEntity.status(OK)
                 .body(commentService.getAllCommentsForUser(userName));
+    }
+    @GetMapping(value = "lv1", params = "postId")
+    public ResponseEntity<List<CommentsDto>> getAllLv1CommentsForPost(@RequestParam Long postId) {
+        return ResponseEntity.status(OK)
+                .body(commentService.getAllLv1CommentsForPost(postId));
+    }
+    @GetMapping(value = "subcmts", params = "commentId")
+    public ResponseEntity<List<CommentsDto>> getAllSubCommentsForComment(@RequestParam Long commentId) {
+        return ResponseEntity.status(OK)
+                .body(commentService.getAllSubCommentsForComment(commentId));
     }
 
 }

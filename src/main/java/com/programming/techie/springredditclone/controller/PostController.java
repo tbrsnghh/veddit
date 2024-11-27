@@ -5,6 +5,7 @@ import com.programming.techie.springredditclone.dto.PostRequest;
 import com.programming.techie.springredditclone.dto.PostResponse;
 import com.programming.techie.springredditclone.model.Image;
 import com.programming.techie.springredditclone.model.Post;
+import com.programming.techie.springredditclone.responses.ApiResponse;
 import com.programming.techie.springredditclone.service.FileService;
 import com.programming.techie.springredditclone.service.PostService;
 import lombok.AllArgsConstructor;
@@ -39,185 +40,49 @@ public class PostController {
     private final FileService fileService;
     private final PostService postService;
 
+    // Tạo bài viết
     @PostMapping
-    public ResponseEntity<PostResponse> createPost(@RequestBody PostRequest postRequest) {
+    public ResponseEntity<ApiResponse<PostResponse>> createPost(@RequestBody PostRequest postRequest) {
         PostResponse postResponse = postService.save(postRequest);
-        return ResponseEntity.status(HttpStatus.CREATED).body(postResponse);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(true, "Post created successfully", postResponse));
     }
 
-    @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ResponseEntity<String> uploadFile(@RequestPart("file") MultipartFile file) {
-        try {
-            // Gọi FileService để lưu file
-            String filePath = fileService.storeFile(file);
-
-            // Trả về đường dẫn file đã lưu
-            return ResponseEntity.ok("File uploaded successfully: " + filePath);
-        } catch (RuntimeException e) {
-            // Trả về lỗi nếu có vấn đề khi lưu file
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to upload file: " + e.getMessage());
-        }
-    }
-    @PostMapping(value = "/{id}/upload-images", consumes = "multipart/form-data")
-    public ResponseEntity<?> uploadImages(
+    // Tải lên hình ảnh cho bài viết
+    @PostMapping(value = "/{id}/images", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<List<ImageDTO>>> uploadImages(
             @PathVariable("id") Long postId,
-            @RequestPart("files") List<MultipartFile> files
-    ) {
-        try {
-            // Validate and fetch the existing post
-            Post existingPost = postService.getPostById(postId); // Ensure this method works correctly
-            if (existingPost == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found with ID: " + postId);
-            }
-
-            files = files == null ? new ArrayList<>() : files;
-
-            if (files.size() > Image.MAXIMUM_IMAGES_PER_POST) {
-                return ResponseEntity.badRequest().body("You can only upload a maximum of " + Image.MAXIMUM_IMAGES_PER_POST + " images.");
-            }
-
-            List<ImageDTO> postImageDTOs = new ArrayList<>();
-
-            for (MultipartFile file : files) {
-                if (file.isEmpty()) {
-                    System.out.println("Skipping empty file...");
-                    continue;
-                }
-
-                // File validation: size and type
-                if (file.getSize() > 10 * 1024 * 1024) { // 10MB
-                    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                            .body("File too large! Maximum size is 10MB.");
-                }
-
-                String contentType = file.getContentType();
-                if (contentType == null || !contentType.startsWith("image/")) {
-                    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-                            .body("Invalid file type. Only image files are allowed.");
-                }
-
-                // Store the file and create PostImage entry
-                String storedFilePath = fileService.storeFile(file);
-
-                // Create a PostImage object and save it to the database
-                Image postImage = postService.createPostImage(
-                        existingPost.getPostId(),
-                        ImageDTO.builder().imageUrl(storedFilePath).build()
-                );
-
-                postImageDTOs.add(ImageDTO.builder().imageUrl(postImage.getImageUrl()).build());
-            }
-
-            return ResponseEntity.ok(postImageDTOs);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
-        }
-    }
-    @GetMapping("/{id}/image_names")
-    public ResponseEntity<?> getPostImages(@PathVariable("id") Long postId) {
-        try {
-            // Validate and fetch the existing post
-            Post existingPost = postService.getPostById(postId);
-            if (existingPost == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found with ID: " + postId);
-            }
-
-            // Fetch images associated with the post
-            List<ImageDTO> images = postService.getPostImages(postId);
-
-            // Return the list of image URLs
-            return ResponseEntity.ok(images);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
-        }
+            @RequestPart("files") List<MultipartFile> files) {
+        List<ImageDTO> images = postService.uploadImages(postId, files);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Images uploaded successfully", images));
     }
 
-    @GetMapping("/images/{filename}")
-    public ResponseEntity<Resource> serveImage(@PathVariable String filename) {
-        try {
-            // Load the file from the "uploads" directory
-            Path filePath = Paths.get("uploads").resolve(filename).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists() || !resource.isReadable()) {
-                throw new RuntimeException("Could not read the file: " + filename);
-            }
-
-            // Determine file type (e.g., "image/jpeg", "image/png")
-            String contentType = Files.probeContentType(filePath);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
-
-            // Return the file as a response with the correct content type
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(null);
-        }
-    }
-
-    @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts() {
-        return status(HttpStatus.OK).body(postService.getAllPosts());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getPostWithImages(@PathVariable("id") Long postId) {
-        try {
-            // Validate and fetch the post
-            Post existingPost = postService.getPostById(postId);
-            if (existingPost == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Post not found with ID: " + postId);
-            }
-
-            // Fetch images associated with the post
-            List<ImageDTO> images = postService.getPostImages(postId);
-
-            // Map images to their URLs
-            List<String> imageUrls = images.stream()
-                    .map(ImageDTO::getImageUrl) // Assuming ImageDTO has a `getUrl()` method
-                    .collect(Collectors.toList());
-
-            // Create a unified response DTO
-            PostResponse response = PostResponse.builder()
-                    .id(existingPost.getPostId())
-                    .postName(existingPost.getPostName())
-                    .description(existingPost.getDescription())
-                    .userName(existingPost.getUser().getUsername())
-//                    .timestamp(LocalDateTime.from(existingPost.getCreatedDate()))
-                    .imageUrls(imageUrls) // Add the image URLs
-                    .build();
-
-            // Return the response
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + e.getMessage());
-        }
-    }
-
-
-    @GetMapping(params = "subredditId")
-    public ResponseEntity<List<PostResponse>> getPostsBySubreddit(@RequestParam Long subredditId) {
-        return status(HttpStatus.OK).body(postService.getPostsBySubreddit(subredditId));
-    }
-
-    @GetMapping(params = "username")
-    public ResponseEntity<List<PostResponse>> getPostsByUsername(@RequestParam String username) {
-        return status(HttpStatus.OK).body(postService.getPostsByUsername(username));
-    }
+    // Lấy danh sách bài viết mới nhất
     @GetMapping("/latest")
-    public ResponseEntity<Page<PostResponse>> getLatestPosts(
+    public ResponseEntity<ApiResponse<Page<PostResponse>>> getLatestPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(postService.getLatestPosts(pageable));
+        Page<PostResponse> latestPosts = postService.getLatestPosts(pageable);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Latest posts fetched successfully", latestPosts));
+    }
+
+    // Lấy thông tin bài viết và danh sách hình ảnh
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<PostResponse>> getPostWithImages(@PathVariable("id") Long postId) {
+        PostResponse response = postService.getPostWithImages(postId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Post fetched successfully", response));
+    }
+
+    // Phục vụ hình ảnh từ server
+    @GetMapping("/images/{filename}")
+    public ResponseEntity<Resource> serveImage(@PathVariable String filename) {
+        Resource resource = fileService.loadFileAsResource(filename);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(fileService.getContentType(resource)))
+                .body(resource);
     }
 }
+
+
+

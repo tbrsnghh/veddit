@@ -18,8 +18,9 @@ public class Post {
     private Long postId;
     private String postName;
     private String url;
-    @Lob
+    @Column(length = 3000) // Giới hạn độ dài tối đa là 1000 ký tự
     private String description;
+
     private Integer voteCount = 0;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", referencedColumnName = "userId")
@@ -30,4 +31,6 @@ public class Post {
     private Subreddit subreddit;
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Image> images;
+
+
 }
