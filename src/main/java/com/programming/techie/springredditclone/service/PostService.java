@@ -5,6 +5,7 @@ import com.programming.techie.springredditclone.dto.ImageDTO;
 import com.programming.techie.springredditclone.dto.PostRequest;
 import com.programming.techie.springredditclone.dto.PostResponse;
 import com.programming.techie.springredditclone.exceptions.PostNotFoundException;
+import com.programming.techie.springredditclone.exceptions.SpringRedditException;
 import com.programming.techie.springredditclone.exceptions.SubredditNotFoundException;
 import com.programming.techie.springredditclone.mapper.PostMapper;
 import com.programming.techie.springredditclone.model.*;
@@ -140,10 +141,14 @@ public class PostService {
     private final SubredditRepository subredditRepository;
 
     public PostResponse save(PostRequest postRequest) {
+        Subreddit subreddit = subredditRepository.findByName(postRequest.getSubredditName())
+                .orElseThrow(() -> new SpringRedditException("Subreddit not found with name - " + postRequest.getSubredditName()));
         Post post = Post.builder()
                 .description(postRequest.getDescription())
                 .postName(postRequest.getPostName())
                 .createdDate(Instant.now())
+                .user(authService.getCurrentUser())
+                .subreddit(subreddit)
                 .build();
 
         System.out.println(post);
