@@ -6,10 +6,12 @@ import com.programming.techie.springredditclone.dto.RefreshTokenRequest;
 import com.programming.techie.springredditclone.dto.RegisterRequest;
 import com.programming.techie.springredditclone.service.AuthService;
 import com.programming.techie.springredditclone.service.RefreshTokenService;
+import io.github.classgraph.Resource;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import static org.springframework.http.HttpStatus.OK;
 
@@ -48,5 +50,9 @@ public class AuthController {
     public ResponseEntity<String> logout(@Valid @RequestBody RefreshTokenRequest refreshTokenRequest) {
         refreshTokenService.deleteRefreshToken(refreshTokenRequest.getRefreshToken());
         return ResponseEntity.status(OK).body("Refresh Token Deleted Successfully!!");
+    }
+    @PostMapping(value = "profilePicture", consumes = "multipart/form-data")
+    public ResponseEntity<String> uploadProfilePicture(@RequestPart("file") MultipartFile file) {
+        return authService.uploadProfilePicture(file);
     }
 }

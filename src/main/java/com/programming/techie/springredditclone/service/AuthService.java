@@ -1,17 +1,19 @@
 package com.programming.techie.springredditclone.service;
 
-import com.programming.techie.springredditclone.dto.AuthenticationResponse;
-import com.programming.techie.springredditclone.dto.LoginRequest;
-import com.programming.techie.springredditclone.dto.RefreshTokenRequest;
-import com.programming.techie.springredditclone.dto.RegisterRequest;
+import com.programming.techie.springredditclone.dto.*;
 import com.programming.techie.springredditclone.exceptions.SpringRedditException;
+import com.programming.techie.springredditclone.model.ImageUser;
 import com.programming.techie.springredditclone.model.NotificationEmail;
 import com.programming.techie.springredditclone.model.User;
 import com.programming.techie.springredditclone.model.VerificationToken;
+import com.programming.techie.springredditclone.repository.ImageUserRepository;
 import com.programming.techie.springredditclone.repository.UserRepository;
 import com.programming.techie.springredditclone.repository.VerificationTokenRepository;
 import com.programming.techie.springredditclone.security.JwtProvider;
+import io.github.classgraph.Resource;
 import lombok.AllArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -39,6 +42,8 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
+    private final FileService fileService;
+    private final ImageUserRepository imageUserRepository;
 
     public void signup(RegisterRequest registerRequest) {
         User user = new User();
@@ -93,27 +98,63 @@ public class AuthService {
                 loginRequest.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authenticate);
         String token = jwtProvider.generateToken(authenticate);
+        User user = userRepository.findByUsername(loginRequest.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username - " + loginRequest.getUsername()));
+        UserDTO userDTO = convertUserToUserDTO(user);
         return AuthenticationResponse.builder()
                 .authenticationToken(token)
                 .refreshToken(refreshTokenService.generateRefreshToken().getToken())
                 .expiresAt(Instant.now().plusMillis(jwtProvider.getJwtExpirationInMillis()))
-                .username(loginRequest.getUsername())
+                .user(userDTO)
+                .build();
+    }
+
+    private UserDTO convertUserToUserDTO(User user) {
+        return UserDTO.builder()
+                .email(user.getEmail())
+                .username(user.getUsername())
+                .created(user.getCreated())
+                .userId(user.getUserId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phoneNumber(user.getPhoneNumber())
+                .birthday(user.getBirthday())
+                .profilePictureUrl(user.getProfilePictureUrl() != null ? user.getProfilePictureUrl().getFileName() : null)
+                .address(user.getAddress())
+                .enabled(user.isEnabled())
                 .build();
     }
 
     public AuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
         refreshTokenService.validateRefreshToken(refreshTokenRequest.getRefreshToken());
         String token = jwtProvider.generateTokenWithUserName(refreshTokenRequest.getUsername());
+        User user = userRepository.findByUsername(refreshTokenRequest.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username - " + refreshTokenRequest.getUsername()));
+        UserDTO userDTO = convertUserToUserDTO(user);
         return AuthenticationResponse.builder()
                 .authenticationToken(token)
                 .refreshToken(refreshTokenRequest.getRefreshToken())
                 .expiresAt(Instant.now().plusMillis(jwtProvider.getJwtExpirationInMillis()))
-                .username(refreshTokenRequest.getUsername())
+                .user(userDTO)
                 .build();
     }
 
     public boolean isLoggedIn() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return !(authentication instanceof AnonymousAuthenticationToken) && authentication.isAuthenticated();
+    }
+
+    public ResponseEntity<String> uploadProfilePicture(MultipartFile file) {
+        fileService.storeFile(file);
+
+        User user = getCurrentUser();
+        ImageUser imageUser = ImageUser.builder()
+                .fileName(file.getOriginalFilename())
+                .uploadedAt(Instant.now())
+                .user(user).build();
+
+        userRepository.save(user);
+        imageUserRepository.save(imageUser);
+        return ResponseEntity.ok().body("Profile Picture uploaded successfully!!");
     }
 }
