@@ -140,12 +140,12 @@ public class PostService {
     private final SubredditRepository subredditRepository;
 
     public PostResponse save(PostRequest postRequest) {
-        Post post = new Post();
-        post.setPostName(postRequest.getPostName());
-        post.setDescription(postRequest.getDescription());
-        post.setCreatedDate(Instant.now());
-        post.setUser(authService.getCurrentUser());
-        post.setSubreddit(subredditRepository.findByName(postRequest.getSubredditName()).get());
+        Post post = Post.builder()
+                .description(postRequest.getDescription())
+                .postName(postRequest.getPostName())
+                .createdDate(Instant.now())
+                .build();
+
         System.out.println(post);
         postRepository.save(post);
         return mapToDto(post);

@@ -145,16 +145,17 @@ public class AuthService {
     }
 
     public ResponseEntity<String> uploadProfilePicture(MultipartFile file) {
-        fileService.storeFile(file);
+        String filePath = fileService.storeFile(file);
 
         User user = getCurrentUser();
         ImageUser imageUser = ImageUser.builder()
-                .fileName(file.getOriginalFilename())
+                .fileName(filePath)
                 .uploadedAt(Instant.now())
                 .user(user).build();
-
-        userRepository.save(user);
         imageUserRepository.save(imageUser);
+        user.setProfilePictureUrl(imageUser);
+        userRepository.save(user);
+
         return ResponseEntity.ok().body("Profile Picture uploaded successfully!!");
     }
 }
