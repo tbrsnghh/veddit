@@ -1,6 +1,7 @@
 package com.programming.techie.springredditclone.mapper;
 
 import com.programming.techie.springredditclone.dto.CommentsDto;
+import com.programming.techie.springredditclone.dto.UserDTO;
 import com.programming.techie.springredditclone.model.Comment;
 import com.programming.techie.springredditclone.model.Post;
 import com.programming.techie.springredditclone.model.User;
@@ -17,7 +18,12 @@ public interface CommentMapper {
     Comment map(CommentsDto commentsDto, Post post, User user);
 
     @Mapping(target = "postId", expression = "java(comment.getPost().getPostId())")
-    @Mapping(target = "userName", expression = "java(comment.getUser().getUsername())")
+    @Mapping(target = "user", source = "user", qualifiedByName = "mapUserToUserDTO")
     @Mapping(target = "parentCommentId", expression = "java(comment.getParentComment() != null ? comment.getParentComment().getId() : null)")
     CommentsDto mapToDto(Comment comment);
+    @org.mapstruct.Named("mapUserToUserDTO")
+    default UserDTO mapUserToUserDTO(User user) {
+        if (user == null) return null;
+        return UserDTO.mapper(user);
+    }
 }

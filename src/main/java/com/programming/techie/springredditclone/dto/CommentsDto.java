@@ -23,7 +23,7 @@ public class CommentsDto {
     @Size(max = 500, message = "Text cannot exceed 500 characters") // Giới hạn độ dài
     private String text;
 
-    private String userName;
+    private UserDTO user;
     // Nếu cần, có thể thêm thông tin người dùng khác ở đây
     private Long parentCommentId;
 }

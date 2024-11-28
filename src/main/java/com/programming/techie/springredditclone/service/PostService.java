@@ -4,6 +4,7 @@ import com.github.marlonlom.utilities.timeago.TimeAgo;
 import com.programming.techie.springredditclone.dto.ImageDTO;
 import com.programming.techie.springredditclone.dto.PostRequest;
 import com.programming.techie.springredditclone.dto.PostResponse;
+import com.programming.techie.springredditclone.dto.UserDTO;
 import com.programming.techie.springredditclone.exceptions.PostNotFoundException;
 import com.programming.techie.springredditclone.exceptions.SpringRedditException;
 import com.programming.techie.springredditclone.exceptions.SubredditNotFoundException;
@@ -197,12 +198,13 @@ public class PostService {
         boolean downVote = vote != null && vote.getVoteType().equals(DOWNVOTE);
 
         List<String> images = imageRepository.findByPost(post).stream().map(Image::getImageUrl).collect(Collectors.toList());
+        User user = post.getUser();
         // Map the Post entity to a PostResponse DTO
         return PostResponse.builder()
                 .id(post.getPostId())
                 .postName(post.getPostName())
                 .description(post.getDescription())
-                .userName(Optional.ofNullable(post.getUser()).map(User::getUsername).orElse(""))
+                .user(UserDTO.mapper(user))
                 .upVote(upVote)
                 .downVote(downVote)
                 .subredditName(Optional.ofNullable(post.getSubreddit()).map(Subreddit::getName).orElse(""))
