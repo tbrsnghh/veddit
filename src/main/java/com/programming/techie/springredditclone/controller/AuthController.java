@@ -4,6 +4,7 @@ import com.programming.techie.springredditclone.dto.AuthenticationResponse;
 import com.programming.techie.springredditclone.dto.LoginRequest;
 import com.programming.techie.springredditclone.dto.RefreshTokenRequest;
 import com.programming.techie.springredditclone.dto.RegisterRequest;
+import com.programming.techie.springredditclone.responses.ApiResponse;
 import com.programming.techie.springredditclone.service.AuthService;
 import com.programming.techie.springredditclone.service.RefreshTokenService;
 import io.github.classgraph.Resource;
@@ -54,5 +55,9 @@ public class AuthController {
     @PostMapping(value = "profilePicture", consumes = "multipart/form-data")
     public ResponseEntity<String> uploadProfilePicture(@RequestPart("file") MultipartFile file) {
         return authService.uploadProfilePicture(file);
+    }
+    @GetMapping("userinfo")
+    public ResponseEntity<ApiResponse> getUserInfo() {
+        return authService.getUserInfo();
     }
 }

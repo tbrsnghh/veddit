@@ -9,6 +9,7 @@ import com.programming.techie.springredditclone.model.VerificationToken;
 import com.programming.techie.springredditclone.repository.ImageUserRepository;
 import com.programming.techie.springredditclone.repository.UserRepository;
 import com.programming.techie.springredditclone.repository.VerificationTokenRepository;
+import com.programming.techie.springredditclone.responses.ApiResponse;
 import com.programming.techie.springredditclone.security.JwtProvider;
 import io.github.classgraph.Resource;
 import lombok.AllArgsConstructor;
@@ -157,5 +158,11 @@ public class AuthService {
         userRepository.save(user);
 
         return ResponseEntity.ok().body("Profile Picture uploaded successfully!!");
+    }
+
+    public ResponseEntity<ApiResponse> getUserInfo() {
+        User user = getCurrentUser();
+        UserDTO userDTO = convertUserToUserDTO(user);
+        return ResponseEntity.ok().body(ApiResponse.builder().data(userDTO).build());
     }
 }

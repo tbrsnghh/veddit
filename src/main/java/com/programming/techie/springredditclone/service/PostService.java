@@ -149,6 +149,7 @@ public class PostService {
                 .postName(postRequest.getPostName())
                 .createdDate(Instant.now())
                 .user(authService.getCurrentUser())
+                .voteCount(0)
                 .subreddit(subreddit)
                 .build();
 
