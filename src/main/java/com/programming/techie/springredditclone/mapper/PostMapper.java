@@ -3,6 +3,7 @@ package com.programming.techie.springredditclone.mapper;
 import com.github.marlonlom.utilities.timeago.TimeAgo;
 import com.programming.techie.springredditclone.dto.PostRequest;
 import com.programming.techie.springredditclone.dto.PostResponse;
+import com.programming.techie.springredditclone.dto.UserDTO;
 import com.programming.techie.springredditclone.model.*;
 import com.programming.techie.springredditclone.repository.CommentRepository;
 import com.programming.techie.springredditclone.repository.VoteRepository;
@@ -36,7 +37,7 @@ public abstract class PostMapper {
 
     @Mapping(target = "id", source = "postId")
     @Mapping(target = "subredditName", source = "subreddit.name")
-    @Mapping(target = "userName", source = "user.username")
+    @Mapping(target = "user", expression = "java(toUserDTO(post.getUser()))")
     @Mapping(target = "commentCount", expression = "java(commentCount(post))")
     @Mapping(target = "duration", expression = "java(getDuration(post))")
     @Mapping(target = "upVote", expression = "java(isPostUpVoted(post))")
@@ -69,5 +70,7 @@ public abstract class PostMapper {
         }
         return false;
     }
-
+    protected UserDTO toUserDTO(User user) {
+        return UserDTO.mapper(user);
+    }
 }
